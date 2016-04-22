@@ -1,0 +1,22 @@
+各欄位規則及意思
+
+$1	username
+$2	module_id
+$3	duration
+		目前沒有course_structure 是以所有使用者最後的event 或是server 發出的vidoe_stopped時間點 做為影片的長度
+$4	watching_start_time
+		觀看影片開始的時間:第一個event時間 減 event的current_time(這裡的currnt_time 只的是 影片時間軸上的時間)
+$5	watching_end_time
+		各user最後一個event觸發的時間
+$6	events
+		各user在觀看這部影片所有的 event 區分為以下 並訴說各個的算法
+			Pl	在raw data裡並沒有play, case1: 出現在第一個event前必定會加上paly, case2: 如果Pa不是最後一個envent會在後面加Pl
+			Pa	暫停
+			Sf	case1: 加設在當前evnent 的上一個event為seek, 會將上一個envent的end_time(影片時間軸上點擊的時間)紀錄下來, 並與當前envent的start_time 做比較, 如果start_time > 上一個envent的end_time 稱 Sf(往時間軸前seek)
+			Sb	同上 start_time < 上一個envent 的end_time 稱 Sb(往時間軸後seek)
+			SSb	只兩個seek發生在1秒內， 如果當前enent的上一個event為seek 目前event也為seeek，判斷兩個event出發的時間有無小於 1 秒鐘 ，至於是SSb 還是 SSf， 如上
+			SSf	同上
+			St	自動播到影片最後，會發出video_stoped event
+$7	non_dropout
+		1:觀看完影片 0:未觀看完
+		定義為最後一個event end_time > max(duration-30, duration*0.95) 
