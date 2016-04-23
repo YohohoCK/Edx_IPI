@@ -1,4 +1,4 @@
-        Pattern     Times     Count    Non Dropout   Dropout           Rate
+        Pattern     Times     Count    Non_Dropout   Dropout           Rate
        PlPaPlSt      7146      6986           5952      1034       0.851990
        SbPaPlSt       957       953            781       172       0.819517
        PaPlSbSt       496       495            403        92       0.814141
@@ -74,8 +74,8 @@
       SfSSfSfSb       496       477            123       354       0.257862
      SSfSfSSfSf      2132      1636            420      1216       0.256724
        SfPaPlSf      2415      1884            477      1407       0.253185
-      SfSfSfSSf      2956      2408            602      1806       0.250000
       PaPlSSfSf       607       576            144       432       0.250000
+      SfSfSfSSf      2956      2408            602      1806       0.250000
      SfSSfSfSSf      2347      1783            445      1338       0.249579
       SbSfSSfSf       481       458            114       344       0.248908
      SfSSfSSfSb       454       440            109       331       0.247727

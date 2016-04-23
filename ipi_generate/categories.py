@@ -15,7 +15,7 @@ categoryFileName = 'category.txt'
 start_from_pattern = True
 # Data type
 Clickstream = namedtuple('Clickstream', ['num', 'non_dropout'])
-Pattern = namedtuple('Pattern', ['num', 'times', 'count', 'non_dropout', 'dropout', 'rate'])
+Pattern = namedtuple('Pattern', ['Pattern', 'Times', 'Count', 'Non_Dropout', 'Dropout', 'Rate'])
 # Pattern in number form
 symbol2num = OrderedDict([('Pl', '0'), ('Pa', '1'), ('SSf', '2'), ('SSb', '3'), ('Sf', '4'), ('Sb', '5'), ('St', '6')])
 num2symbol = OrderedDict(zip(symbol2num.values(), symbol2num.keys()))
@@ -28,7 +28,6 @@ cateDict = OrderedDict([('Clear_Concept', [0.40, 3]),
 clickstreams = []
 patterns = []
 categories = OrderedDict([])
-weights = []
 ''' Define functions '''
 
 
@@ -91,20 +90,18 @@ def get_rate():
     for pattern, para in top_patterns.items():
         count = para[0] + para[1]
         rate = para[1] / count
-        patterns.append(Pattern(pattern, para[2], count, para[1], para[0], rate))
+        patterns.append(Pattern(num2sym(pattern), para[2], count, para[1], para[0], rate))
     # Sort patterns with their rate
-    patterns.sort(key=lambda p: p.rate, reverse=True)
+    patterns.sort(key=lambda p: p.Rate, reverse=True)
 
 
 # Write pattern file
 def write_patterns():
     print('Writing pattern file...')
     with open(patternFileName, 'w') as file:
-        file.write('{0:>15s}{1:>10s}{2:>10s}{3:>15s}{4:>10s}{5:>15s}\n'.format('Pattern', 'Times', 'Count',
-                                                                               'Non Dropout', 'Dropout', 'Rate'))
+        file.write('{0:>15s}{1:>10s}{2:>10s}{3:>15s}{4:>10s}{5:>15s}\n'.format(*Pattern._fields))
         for p in patterns:
-            file.write('{0:>15s}{1:>10d}{2:>10d}{3:>15d}{4:>10d}{5:>15f}\n'.format(num2sym(p.num), p.times, p.count,
-                                                                                   p.non_dropout, p.dropout, p.rate))
+            file.write('{0:>15s}{1:>10d}{2:>10d}{3:>15d}{4:>10d}{5:>15f}\n'.format(*(tuple(p))))
 
 
 # Read pattern file
@@ -119,106 +116,34 @@ def read_pattern():
 
 # Distribute patterns to categories
 def set_cate():
-    print('Distribute patterns...', end='')
+    print('Distribute patterns...')
     categories.clear()
     for name in cateDict.keys():
         categories.update({name: []})
-    for pattern in patterns:
-        for name, thd in cateDict.items():
-            if pattern.rate >= thd[0]:
-                categories[name].append(pattern.num)
+    index = 0
+    for name, para in cateDict.items():
+        for i in range(index, pSize):
+            if float(patterns[i].Rate) < para[0]:
+                index = i
                 break
-    print('Complete')
+            categories[name].append(patterns[i].Pattern)
 
 
-'''
 # Write category file
 def write_cate():
-    print('Writing category file...', end='')
+    print('Writing category file...')
     with open(categoryFileName, 'w') as file:
         for name, ptns in categories.items():
-            file.write(name + '\n')
+            file.write(name + '\t' + str(cateDict[name][1]) + '\n')
             for pattern in ptns:
-                file.write(num2sym(pattern) + '\t' + pattern + '\n')
+                file.write(pattern + '\n')
             file.write(divider + '\n')
-    print('Complete')
 
-
-# Weight getter
-def get_weight(clickstream):
-    weight = []
-    norm = distance_lib.norm(clickstream)
-    for ptns in categories.values():
-        weight_sum = 0
-        for pattern in ptns:
-            weight_sum += distance_lib.cosw(pattern, clickstream, norm)
-            weight_sum += distance_lib.lvw(pattern, clickstream, w1=0, w2=1, w3=1)
-            weight_sum += distance_lib.lvw(pattern, clickstream, w1=0.1, w2=1, w3=1)
-        weight.append(weight_sum)
-    return weight
-
-
-# Compute all clickstreams' weight avg
-def get_weight_avg():
-    print('Computing weight...', end='')
-    weights.clear()
-    avg = [0]*len(categories)
-    for clickstream_num in clickstreams_num[0:testNum]:
-        weight = get_weight(clickstream_num.num)
-        avg = [a + b for a, b in zip(avg, weight)]
-        weights.append(OrderedDict(zip(list(cateDict.keys())+['non_dropout'], weight+[clickstream_num.non_dropout])))
-        # weights.append(Weight._make(weight + [clickstream_num.non_dropout]))
-    avg = [w / testNum for w in avg]
-    print('Complete')
-    return avg
-
-
-# IPI getter
-def get_ipi(weight):
-    ipi = 0
-    for name, thd in cateDict.items():
-        ipi += thd[1]*-1 if weight[name] < weight_avg[name] else thd[1]
-    return ipi
-
-
-# Write IPI file
-def write_ipi():
-    print('Compute IPI...', end='')
-    with open(ipiFileName, 'w') as file:
-        file.write('{0:>15s}{1:>60s}{2:>20s}{3:>20s}{4:>20s}{5:>20s}{6:>15s}{7:>10s}\n'.format(
-            *(('username', 'module_id') + tuple(weight_avg.keys())) + ('IPI',)))
-        ipis = []
-        cur = views[0].username
-        for view, weight in zip(views[0:testNum], weights):
-            cur_ipi = get_ipi(weight)
-            ipis.append(cur_ipi)
-            if view.username != cur:
-                cur = view.username
-                file.write('{0:>15s}{1:>165f}\n'.format('~~'+cur, sum(ipis)/len(ipis)))
-                ipis.clear()
-            file.write('{0:>15s}{1:>60s}{2:>20f}{3:>20f}{4:>20f}{5:>20f}{6:>15s}{7:>10d}\n'.format(
-                *((view.username, view.module_id) + tuple(weight.values())), cur_ipi))
-        file.write('{0:>15s}{1:>165f}\n'.format('~~' + cur, sum(ipis) / len(ipis)))
-    print('Complete')
-
-'''
-# Start analysis
-'''
-# Level 2
-read_event()
-# testNum = len(clickstreams_num)
-if justIpi:
-    analyze_patterns()
-    write_patterns()
-    set_cate()
-    write_cate()
-weight_avg = OrderedDict(zip(list(cateDict.keys()) + ['non_dropout'], get_weight_avg() + [1]))
-write_ipi()
-'''
 if start_from_pattern:
     read_clickstream()
     get_rate()
     write_patterns()
 else:
     read_pattern()
-
+set_cate()
+write_cate()

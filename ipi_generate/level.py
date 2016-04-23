@@ -3,19 +3,19 @@
 from collections import OrderedDict
 from collections import namedtuple
 from ngram import NGram
-from ipi_generate import distance_lib
+from ipi import distance
 import operator
 
 """ Basic setting """
 nSize = 4
 pSize = 100
-testNum = 100
-divider = '--------------------'
+testNum = 1000
+
 eventFileName = 'user_events.txt'
 patternFileName = 'pattern.txt'
 categoryFileName = 'category.txt'
-ipiFileName = 'IPI.txt'
-justIpi = False
+ipiFileName = 'IPI_full.txt'
+divider = '--------------------'
 # Data type
 View = namedtuple('View', ['username', 'module_id', 'duration', 'start_time', 'end_time', 'clickstream', 'non_dropout'])
 Pattern = namedtuple('Pattern', ['string', 'num', 'times', 'count', 'non_dropout', 'dropout', 'rate'])
@@ -154,13 +154,13 @@ def write_cate():
 # Weight getter
 def get_weight(clickstream):
     weight = []
-    norm = distance_lib.norm(clickstream)
+    norm = distance.norm(clickstream)
     for ptns in categories.values():
         weight_sum = 0
         for pattern in ptns:
-            weight_sum += distance_lib.cosw(pattern, clickstream, norm)
-            weight_sum += distance_lib.lvw(pattern, clickstream, w1=0, w2=1, w3=1)
-            weight_sum += distance_lib.lvw(pattern, clickstream, w1=0.1, w2=1, w3=1)
+            weight_sum += distance.cosw(pattern, clickstream, norm)
+            weight_sum += distance.lvw(pattern, clickstream, w1=0, w2=1, w3=1)
+            weight_sum += distance.lvw(pattern, clickstream, w1=0.1, w2=1, w3=1)
         weight.append(weight_sum)
     return weight
 
@@ -192,8 +192,8 @@ def get_ipi(weight):
 def write_ipi():
     print('Compute IPI...', end='')
     with open(ipiFileName, 'w') as file:
-        file.write('{0:>15s}{1:>60s}{2:>20s}{3:>20s}{4:>20s}{5:>20s}{6:>15s}{7:>10s}\n'.format(
-            *(('username', 'module_id') + tuple(weight_avg.keys())) + ('IPI',)))
+        file.write('{0:>15s}{1:>60s}{2:>20s}{3:>20s}{4:>20s}{5:>20s}{6:>15s}{7:>10s}\n'.format(\
+            *(('username', 'moule_id') + tuple(weight_avg.keys())) + ('IPI',)))
         ipis = []
         cur = views[0].username
         for view, weight in zip(views[0:testNum], weights):
@@ -203,8 +203,8 @@ def write_ipi():
                 cur = view.username
                 file.write('{0:>15s}{1:>165f}\n'.format('~~'+cur, sum(ipis)/len(ipis)))
                 ipis.clear()
-            file.write('{0:>15s}{1:>60s}{2:>20f}{3:>20f}{4:>20f}{5:>20f}{6:>15s}{7:>10d}\n'.format(
-                *((view.username, view.module_id) + tuple(weight.values())), cur_ipi))
+            file.write('{0:>15s}{1:>60s}{2:>20f}{3:>20f}{4:>20f}{5:>20f}{6:>15s}{7:>10d}\n'.format(\
+                *((view.username, view.module_id) + tuple(weight.values())) ,cur_ipi))
         file.write('{0:>15s}{1:>165f}\n'.format('~~' + cur, sum(ipis) / len(ipis)))
     print('Complete')
 
@@ -212,10 +212,9 @@ def write_ipi():
 # Level 2
 read_event()
 # testNum = len(clickstreams_num)
-if justIpi:
-    analyze_patterns()
-    write_patterns()
-    set_cate()
-    write_cate()
+analyze_patterns()
+write_patterns()
+set_cate()
+write_cate()
 weight_avg = OrderedDict(zip(list(cateDict.keys()) + ['non_dropout'], get_weight_avg() + [1]))
 write_ipi()
