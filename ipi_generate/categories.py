@@ -3,23 +3,19 @@
 from collections import OrderedDict
 from collections import namedtuple
 from ngram import NGram
-from ipi_generate import distance_lib
 import operator
 
 """ Basic setting """
 nSize = 4
 pSize = 100
-testNum = 100
 divider = '--------------------'
 eventFileName = 'user_events.txt'
 patternFileName = 'pattern.txt'
 categoryFileName = 'category.txt'
-ipiFileName = 'IPI.txt'
-justIpi = False
+start_from_pattern = True
 # Data type
-View = namedtuple('View', ['username', 'module_id', 'duration', 'start_time', 'end_time', 'clickstream', 'non_dropout'])
-Pattern = namedtuple('Pattern', ['string', 'num', 'times', 'count', 'non_dropout', 'dropout', 'rate'])
-Clickstream = namedtuple('ClickStream', ['num', 'non_dropout'])
+Clickstream = namedtuple('Clickstream', ['num', 'non_dropout'])
+Pattern = namedtuple('Pattern', ['num', 'times', 'count', 'non_dropout', 'dropout', 'rate'])
 # Pattern in number form
 symbol2num = OrderedDict([('Pl', '0'), ('Pa', '1'), ('SSf', '2'), ('SSb', '3'), ('Sf', '4'), ('Sb', '5'), ('St', '6')])
 num2symbol = OrderedDict(zip(symbol2num.values(), symbol2num.keys()))
@@ -29,8 +25,7 @@ cateDict = OrderedDict([('Clear_Concept', [0.40, 3]),
                         ('Checkback_Reference', [0.26, -1]),
                         ('Skipping', [0, -3])])
 # data
-views = []
-clickstreams_num = []
+clickstreams = []
 patterns = []
 categories = OrderedDict([])
 weights = []
@@ -38,91 +33,88 @@ weights = []
 
 
 # change clickstream's symbol to number form
-def sym2num(cl):
-    ans = cl
+def sym2num(clickstream):
+    ans = clickstream
     for key in symbol2num.keys():
         ans = ans.replace(key, symbol2num[key])
     return ans
 
 
 # change clickstream's symbol to number form
-def num2sym(cl):
-    ans = cl
+def num2sym(clickstream):
+    ans = clickstream
     for key in num2symbol.keys():
         ans = ans.replace(key, num2symbol[key])
     return ans
 
 
 # Read event file
-def read_event():
-    print('Reading event file...', end='')
-    views.clear()
+def read_clickstream():
+    print('Reading event file...')
+    clickstreams.clear()
     with open(eventFileName, 'r') as file:
-        for view in map(View._make, [line.split() for line in file.readlines()]):
-            views.append(view)
-    clickstreams_num.clear()
-    for view in views:
-        clickstreams_num.append(Clickstream(sym2num(view.clickstream), view.non_dropout))
-
-    print('Complete')
+        for view in [line.split() for line in file.readlines()]:
+            clickstreams.append(Clickstream(sym2num(view[5]), int(view[6])))
 
 
 # Find top 100 n-gram patterns
-def find_patterns():
-    print('Doing N-Gram...', end='')
-    patterns_pre = {}
-    for clickstream in clickstreams_num:
+def get_top():
+    print('Doing N-Gram...')
+    top_patterns = {}
+    for clickstream in clickstreams:
         n = NGram(N=nSize, pad_len=0, items=[clickstream.num])
         grams = n._grams
         grams2 = dict(zip(grams.keys(), [list(v.values())[0] for v in grams.values()]))
         for k in grams2.keys():
-            if k in patterns_pre.keys():
-                patterns_pre[k] += grams2[k]
+            if k in top_patterns.keys():
+                top_patterns[k][2] += grams2[k]
             else:
-                patterns_pre[k] = grams2[k]
-    patterns_pre = sorted(patterns_pre.items(), key=operator.itemgetter(1), reverse=True)
-    patterns_pre = patterns_pre[0:pSize if pSize <= len(patterns_pre) else len(patterns_pre)]
-    print('Complete')
-    return patterns_pre
+                top_patterns[k] = [0, 0, grams2[k]]
+    top_patterns = sorted(top_patterns.items(), key=operator.itemgetter(1), reverse=True)
+    top_patterns = top_patterns[0:pSize if pSize <= len(top_patterns) else len(top_patterns)]
+    return dict(zip([ptn[0] for ptn in top_patterns], [ptn[1] for ptn in top_patterns]))
 
 
 # Analyze patterns' non-dropout rate
-def analyze_patterns():
-    patterns_pre = find_patterns()
-    print('Analyzing patterns...', end='')
+def get_rate():
+    top_patterns = get_top()
+    print('Analyzing patterns...')
+    # Counting dropout & non_dropout
+    for num, non_dropout in clickstreams:
+        if len(num) < nSize:
+            continue
+        for pattern in top_patterns.keys():
+            if pattern in num:
+                top_patterns[pattern][non_dropout] += 1
+    # Set top 100 patterns' analysis result
     patterns.clear()
-    for num, times in patterns_pre:
-        pattern = []
-        symbols = [num2symbol[n] for n in num]
-        pattern.append(''.join(symbols))
-        pattern.append(num)
-        pattern.append(times)
-        non_dropout = 0
-        dropout = 0
-        for (clickstream, nd) in clickstreams_num:
-            if num in clickstream:
-                if nd == '1':
-                    non_dropout += 1
-                else:
-                    dropout += 1
-        pattern.append(non_dropout + dropout)
-        pattern.append(non_dropout)
-        pattern.append(dropout)
-        pattern.append(non_dropout / (non_dropout + dropout))
-        patterns.append(Pattern._make(pattern))
-    # Sort pattern with its rate
-    patterns.sort(key=lambda p: p[6], reverse=True)
-    print('Complete')
+    for pattern, para in top_patterns.items():
+        count = para[0] + para[1]
+        rate = para[1] / count
+        patterns.append(Pattern(pattern, para[2], count, para[1], para[0], rate))
+    # Sort patterns with their rate
+    patterns.sort(key=lambda p: p.rate, reverse=True)
 
 
-# Write patterns.txt
+# Write pattern file
 def write_patterns():
-    print('Writing pattern file...', end='')
+    print('Writing pattern file...')
     with open(patternFileName, 'w') as file:
-        file.write('{0:>15s}{1:>10s}{2:>10s}{3:>10s}{4:>15s}{5:>10s}{6:>20s}\n'.format(*Pattern._fields))
+        file.write('{0:>15s}{1:>10s}{2:>10s}{3:>15s}{4:>10s}{5:>15s}\n'.format('Pattern', 'Times', 'Count',
+                                                                               'Non Dropout', 'Dropout', 'Rate'))
         for p in patterns:
-            file.write('{0:>15s}{1:>10s}{2:>10d}{3:>10d}{4:>15d}{5:>10d}{6:>20.3f}\n'.format(*(tuple(p))))
-    print('Complete')
+            file.write('{0:>15s}{1:>10d}{2:>10d}{3:>15d}{4:>10d}{5:>15f}\n'.format(num2sym(p.num), p.times, p.count,
+                                                                                   p.non_dropout, p.dropout, p.rate))
+
+
+# Read pattern file
+def read_pattern():
+    print('Reading pattern file...')
+    patterns.clear()
+    with open(patternFileName, 'r') as file:
+        file.readline()
+        for pattern in map(Pattern._make, [line.split() for line in file.readlines()]):
+            patterns.append(pattern)
 
 
 # Distribute patterns to categories
@@ -139,6 +131,7 @@ def set_cate():
     print('Complete')
 
 
+'''
 # Write category file
 def write_cate():
     print('Writing category file...', end='')
@@ -208,7 +201,9 @@ def write_ipi():
         file.write('{0:>15s}{1:>165f}\n'.format('~~' + cur, sum(ipis) / len(ipis)))
     print('Complete')
 
-''' Start analysis '''
+'''
+# Start analysis
+'''
 # Level 2
 read_event()
 # testNum = len(clickstreams_num)
@@ -219,3 +214,11 @@ if justIpi:
     write_cate()
 weight_avg = OrderedDict(zip(list(cateDict.keys()) + ['non_dropout'], get_weight_avg() + [1]))
 write_ipi()
+'''
+if start_from_pattern:
+    read_clickstream()
+    get_rate()
+    write_patterns()
+else:
+    read_pattern()
+
