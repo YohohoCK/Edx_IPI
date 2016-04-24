@@ -87,9 +87,9 @@ def get_weight(clickstream):
         weight_sum = 0
         for pattern in patterns:
             weight_sum += distance_lib.cos_wt(pattern, clickstream, norm)
-            weight_sum += distance_lib.lv_wt(pattern, clickstream, w1=0, w2=1, w3=1)
-            weight_sum += distance_lib.lv_wt(pattern, clickstream, w1=0.1, w2=1, w3=1)
-        weight.append(weight_sum)
+            weight_sum -= distance_lib.lv_dis(pattern, clickstream, w1=0, w2=1, w3=1)
+            weight_sum -= distance_lib.lv_dis(pattern, clickstream, w1=0.1, w2=1, w3=1)
+        weight.append(weight_sum + 2*len(patterns))
     return weight
 
 
@@ -120,5 +120,4 @@ def level3():
     get_all_weight()
 
 level3()
-for clickstream in clickstreams.keys():
-    print(clickstream)
+print(avg_weight)
