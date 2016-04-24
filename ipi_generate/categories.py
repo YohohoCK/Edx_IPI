@@ -5,25 +5,26 @@ from collections import namedtuple
 from ngram import NGram
 import operator
 
-""" Basic setting """
+''' Basic setting'''
+# Parameter
 nSize = 4
 pSize = 100
 divider = '--------------------'
 eventFileName = 'user_events.txt'
 patternFileName = 'pattern.txt'
 categoryFileName = 'category.txt'
-start_from_pattern = True
+start_from_pattern = False
+cateDict = OrderedDict([('Clear_Concept', [0.40, 3]),
+                        ('Rewatch', [0.3, 1]),
+                        ('Checkback_Reference', [0.26, -1]),
+                        ('Skipping', [0, -3])])
+
 # Data type
 Clickstream = namedtuple('Clickstream', ['num', 'non_dropout'])
 Pattern = namedtuple('Pattern', ['Pattern', 'Times', 'Count', 'Non_Dropout', 'Dropout', 'Rate'])
 # Pattern in number form
 symbol2num = OrderedDict([('Pl', '0'), ('Pa', '1'), ('SSf', '2'), ('SSb', '3'), ('Sf', '4'), ('Sb', '5'), ('St', '6')])
 num2symbol = OrderedDict(zip(symbol2num.values(), symbol2num.keys()))
-# Category parameter
-cateDict = OrderedDict([('Clear_Concept', [0.40, 3]),
-                        ('Rewatch', [0.3, 1]),
-                        ('Checkback_Reference', [0.26, -1]),
-                        ('Skipping', [0, -3])])
 # data
 clickstreams = []
 patterns = []
@@ -139,11 +140,16 @@ def write_cate():
                 file.write(pattern + '\n')
             file.write(divider + '\n')
 
-if start_from_pattern:
-    read_clickstream()
-    get_rate()
-    write_patterns()
-else:
-    read_pattern()
-set_cate()
-write_cate()
+
+# The whole level 2 program generates the category
+def level2():
+    if start_from_pattern:
+        read_clickstream()
+        get_rate()
+        write_patterns()
+    else:
+        read_pattern()
+    set_cate()
+    write_cate()
+
+level2()
