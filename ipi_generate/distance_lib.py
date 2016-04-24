@@ -1,30 +1,31 @@
 # coding=utf-8
 # Author : How How, Yo Ho Ho
 
-from collections import OrderedDict
 from functools import reduce
 from ngram import NGram
 import math
 
 nSize = 4
+testClick = '043510101010101010101010105352435101010101010101010105510105554222242353322410101010101010101010101010101010101010101010101010101010105410104225545534444454424444342224323222222433422233552245510104455234101045445101010104'
 
 
+# Compute the norm of the clickstream vector
 def norm(clickstream):
-    if len(clickstream) < nSize:
-        return 0
     n = NGram(N=nSize, pad_len=0, items=[clickstream])
     grams = n._grams
-    vc = OrderedDict(zip(grams.keys(), [list(v.values())[0] for v in grams.values()]))
-    return math.sqrt(reduce(lambda x, y: x + y * y, vc.values(), 0))
+    vc = [list(v.values())[0] for v in grams.values()]
+    return math.sqrt(reduce(lambda x, y: x + y * y, vc, 0))
 
 
-def cosw(pattern='1010',clickstream='',  vcnorm=1):
-    if len(clickstream) < nSize:
+# Compute the cosine weight of the clickstream with the pattern
+def cos_wt(pattern='1010', clickstream='',  vcnorm=1):
+    if vcnorm == 0:
         return 0
-    return (clickstream.count(pattern)+0.0) / vcnorm
+    return clickstream.count(pattern) / vcnorm
 
 
-def lvw(s1='', s2='', w1=0.0, w2=1, w3=1):
+# Compute the Levenshtein weight of the clickstream with the pattern and fixed weight
+def lv_wt(s1='', s2='', w1=0.0, w2=1, w3=1):
     if len(s1) > len(s2):
         s1, s2 = s2, s1
         w1, w2 = w2, w1
@@ -40,3 +41,6 @@ def lvw(s1='', s2='', w1=0.0, w2=1, w3=1):
                                          newDistances[-1] + w2)))
         distances = newDistances
     return 1-distances[-1]
+
+for i in range(0, 1000):
+    myVC = cos_wt('1010', testClick, 23.1)
