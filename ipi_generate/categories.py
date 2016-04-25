@@ -13,7 +13,7 @@ divider = '--------------------'
 eventFileName = 'user_events.txt'
 patternFileName = 'pattern.txt'
 categoryFileName = 'category.txt'
-start_from_pattern = False
+start_from_pattern = True
 cateDict = OrderedDict([('Clear_Concept', [0.40, 3]),
                         ('Rewatch', [0.3, 1]),
                         ('Checkback_Reference', [0.26, -1]),

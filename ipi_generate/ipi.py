@@ -8,7 +8,7 @@ from ipi_generate import distance_lib
 ''' Basic setting '''
 # Parameter
 pSize = 100
-testNum = 500
+testNum = 300
 divider = '--------------------'
 eventFileName = 'user_events.txt'
 categoryFileName = 'category.txt'
@@ -23,9 +23,8 @@ num2symbol = OrderedDict(zip(symbol2num.values(), symbol2num.keys()))
 # data
 views = []
 clickstreams = {}
-cateWeight = OrderedDict([])
+cateWeight = []
 categories = OrderedDict([])
-weights = []
 avg_weight = []
 
 ''' Define functions '''
@@ -53,11 +52,13 @@ def read_event():
     views.clear()
     clickstreams.clear()
     with open(eventFileName, 'r') as file:
-        for view in map(View._make, [line.split() for line in file.readlines()[0:testNum]]):
+        for view in map(View._make, [line.split() for line in file.readlines()[0:]]):
             views.append(view)
             num = sym2num(view.Clickstream)
             if num not in clickstreams.keys():
-                clickstreams.update({num: []})
+                clickstreams.update({num: [1]})
+            else:
+                clickstreams[num][0] += 1
 
 
 # Read category file
@@ -71,7 +72,7 @@ def read_category():
             if line == '':
                 break
             name, weight = line.split()
-            cateWeight.update({name: weight})
+            cateWeight.append(int(weight))
             categories.update({name: []})
             line = file.readline().split()[0]
             while line != divider:
@@ -96,21 +97,55 @@ def get_weight(clickstream):
 # Compute type of clickstreams' weight
 def get_all_weight():
     print('Computing weight...')
-    index = 1
-    weights.clear()
     avg_weight.clear()
-    avg = [0] * len(categories)
     # Compute all type of clickstreams' weight
     for clickstream in clickstreams.keys():
         weight = get_weight(clickstream)
-        clickstreams[clickstream] = weight
-        avg = [a + b for a, b in zip(avg, weight)]
-        if index % 10 == 0:
-            print(index)
-        index += 1
-    # Save the average of weight for all type of clickstream
+        clickstreams[clickstream].append(weight)
+
+
+# Compute the average of categories' weight
+def get_avg():
+    print('Computing average weight...')
+    avg = [0] * len(categories)
+    for para in clickstreams.values():
+        avg = [a + b for a, b in zip(avg, para[1])]
     for w in avg:
         avg_weight.append(w / len(clickstreams))
+
+
+# Compute type of clickstreams' IPI
+def get_all_ipi():
+    print('Computing IPI...')
+    for stream, para in clickstreams.items():
+        weight = para[1]
+        ipi = 0
+        for i in range(len(cateWeight)):
+            ipi += cateWeight[i] * 1 if weight[i] > avg_weight[i] else -1
+        clickstreams[stream].append(ipi)
+
+
+# Write IPI file
+def write_ipi():
+    with open(ipiFileName, 'w') as file:
+        file.write('{0:>20s}{1:>60s}{2:>10s}{3:>15s}{4:>10s}{5:>20s}{6:>20s}{7:>20s}{8:>20s}{9:>20s}\n'.format(
+            *tuple(('User', 'Module', 'Duration', 'Non_Dropout', 'IPI')), *(tuple(categories.keys())), *tuple(('Clickstream',))
+        ))
+        ipis = []
+        cur = views[0].User
+        for view in views:
+            para = clickstreams[sym2num(view.Clickstream)]
+            cur_ipi = para[2]
+            ipis.append(cur_ipi)
+            if view.User != cur:
+                file.write('{0:>20s}{1:>95f}\n'.format('~~' + cur, sum(ipis) / len(ipis)))
+                cur = view.User
+                ipis.clear()
+            file.write('{0:>20s}{1:>60s}{2:>10s}{3:>15s}{4:>10d}{5:>20f}{6:>20f}{7:>20f}{8:>20f}\t'.format(
+                *tuple((view.User, view.Module, view.Duration, view.Non_Dropout, para[2])), *(tuple(para[1]))
+            ))
+            file.write(view.Clickstream + '\n')
+        file.write('{0:>20s}{1:>95f}\n'.format('~~' + cur, sum(ipis) / len(ipis)))
 
 
 # The whole level 3 program generates the IPI
@@ -118,6 +153,8 @@ def level3():
     read_event()
     read_category()
     get_all_weight()
+    get_avg()
+    get_all_ipi()
+    write_ipi()
 
 level3()
-print(avg_weight)
