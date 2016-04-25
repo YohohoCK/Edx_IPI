@@ -1,6 +1,7 @@
 # Edx_IPI
 
 作者：Yohoho, 皓皓
+
 用途：大學專題
 
 　　Project目標為實作論文[1]的IPI運算，並進一步分析IPI與drop out還有其他feature間的關連性
