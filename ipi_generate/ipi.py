@@ -4,7 +4,7 @@
 from collections import OrderedDict
 from collections import namedtuple
 from ipi_generate import distance_lib
-
+import operator
 ''' Basic setting '''
 # Parameter
 pSize = 100
@@ -12,6 +12,7 @@ testNum = 300
 divider = '--------------------'
 eventFileName = 'user_events.txt'
 categoryFileName = 'category.txt'
+watchTimeFileName = 'watchTime.txt'
 ipiFileName = 'ipi.txt'
 # Data type
 View = namedtuple('View', ['User', 'Module', 'Duration', 'Start', 'End', 'Clickstream', 'Non_Dropout'])
@@ -146,7 +147,28 @@ def write_ipi():
             ))
             file.write(view.Clickstream + '\n')
         file.write('{0:>20s}{1:>95f}\n'.format('~~' + cur, sum(ipis) / len(ipis)))
-
+def write_watchTime():
+    datas = [{'dropout':0, 'non':0, 'ipi':0} for i in range(0,24)]
+    datas[0]['non']+=1
+    print(datas)
+    for view in views:
+        ipi = clickstreams[sym2num(view.Clickstream)][2]
+        time = view.Start
+        time = int(time[time.find('T')+1:].split(':')[0])
+        if view.Non_Dropout == '1':
+            datas[time]['non']+=1
+        else:
+            datas[time]['dropout']+=1
+        datas[time]['ipi']+=ipi
+    print(datas)
+    with open(watchTimeFileName, 'w') as file:
+        file.write('{0:>10s}{1:>10s}{2:>10s}{3:>10s}\n'.format('StartTime', 'non', 'dropout', 'IPI'))
+        for time in range(0,24):
+            if(datas[time]['non']+datas[time]['dropout'])!=0:
+                datas[time]['ipi'] = float(datas[time]['ipi'])/(datas[time]['non']+datas[time]['dropout'])
+            else:
+                datas[time]['ipi'] = 0
+            file.write('{0:>10d}{1:>10d}{2:>10d}{3:>10f}\n'.format(time, datas[time]['non'], datas[time]['dropout'], datas[time]['ipi']))
 
 # The whole level 3 program generates the IPI
 def level3():
@@ -158,3 +180,4 @@ def level3():
     write_ipi()
 
 level3()
+write_watchTime()
