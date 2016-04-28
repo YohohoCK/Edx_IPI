@@ -4,7 +4,7 @@
 from collections import OrderedDict
 from collections import namedtuple
 from ipi_generate import distance_lib
-import operator
+
 ''' Basic setting '''
 # Parameter
 pSize = 100
@@ -12,8 +12,8 @@ testNum = 300
 divider = '--------------------'
 eventFileName = 'user_events.txt'
 categoryFileName = 'category.txt'
-watchTimeFileName = 'watchTime.txt'
 ipiFileName = 'ipi.txt'
+watchTimeFileName = 'watchTime.txt'
 # Data type
 View = namedtuple('View', ['User', 'Module', 'Duration', 'Start', 'End', 'Clickstream', 'Non_Dropout'])
 Category = namedtuple('Category', ['Name', 'Weight', 'Patterns'])
@@ -21,7 +21,7 @@ Category = namedtuple('Category', ['Name', 'Weight', 'Patterns'])
 symbol2num = OrderedDict([('Pl', '0'), ('Pa', '1'), ('SSf', '2'), ('SSb', '3'), ('Sf', '4'), ('Sb', '5'), ('St', '6')])
 num2symbol = OrderedDict(zip(symbol2num.values(), symbol2num.keys()))
 # Category parameter
-# data
+# Data
 views = []
 clickstreams = {}
 cateWeight = []
@@ -129,46 +129,18 @@ def get_all_ipi():
 # Write IPI file
 def write_ipi():
     with open(ipiFileName, 'w') as file:
-        file.write('{0:>20s}{1:>60s}{2:>10s}{3:>15s}{4:>10s}{5:>20s}{6:>20s}{7:>20s}{8:>20s}{9:>20s}\n'.format(
-            *tuple(('User', 'Module', 'Duration', 'Non_Dropout', 'IPI')), *(tuple(categories.keys())), *tuple(('Clickstream',))
+        file.write('{0:>20s}{1:>65s}{2:>10s}{3:>30s}{4:>15s}{5:>10s}{6:>20s}{7:>20s}{8:>20s}{9:>20s}{10:>20s}\n'.format(
+            *tuple(('User', 'Module', 'Duration', 'Start_Time', 'Non_Dropout', 'IPI')),
+            *(tuple(categories.keys())), *tuple(('Clickstream',))
         ))
-        ipis = []
-        cur = views[0].User
         for view in views:
             para = clickstreams[sym2num(view.Clickstream)]
-            cur_ipi = para[2]
-            ipis.append(cur_ipi)
-            if view.User != cur:
-                file.write('{0:>20s}{1:>95f}\n'.format('~~' + cur, sum(ipis) / len(ipis)))
-                cur = view.User
-                ipis.clear()
-            file.write('{0:>20s}{1:>60s}{2:>10s}{3:>15s}{4:>10d}{5:>20f}{6:>20f}{7:>20f}{8:>20f}\t'.format(
-                *tuple((view.User, view.Module, view.Duration, view.Non_Dropout, para[2])), *(tuple(para[1]))
+            file.write('{0:>20s}{1:>65s}{2:>10s}{3:>30s}{4:>15s}{5:>10d}{6:>20f}{7:>20f}{8:>20f}{9:>20f}\t'.format(
+                *tuple((view.User, view.Module, view.Duration, view.Start, view.Non_Dropout, para[2])),
+                *(tuple(para[1]))
             ))
             file.write(view.Clickstream + '\n')
-        file.write('{0:>20s}{1:>95f}\n'.format('~~' + cur, sum(ipis) / len(ipis)))
-def write_watchTime():
-    datas = [{'dropout':0, 'non':0, 'ipi':0} for i in range(0,24)]
-    datas[0]['non']+=1
-    print(datas)
-    for view in views:
-        ipi = clickstreams[sym2num(view.Clickstream)][2]
-        time = view.Start
-        time = int(time[time.find('T')+1:].split(':')[0])
-        if view.Non_Dropout == '1':
-            datas[time]['non']+=1
-        else:
-            datas[time]['dropout']+=1
-        datas[time]['ipi']+=ipi
-    print(datas)
-    with open(watchTimeFileName, 'w') as file:
-        file.write('{0:>10s}{1:>10s}{2:>10s}{3:>10s}\n'.format('StartTime', 'non', 'dropout', 'IPI'))
-        for time in range(0,24):
-            if(datas[time]['non']+datas[time]['dropout'])!=0:
-                datas[time]['ipi'] = float(datas[time]['ipi'])/(datas[time]['non']+datas[time]['dropout'])
-            else:
-                datas[time]['ipi'] = 0
-            file.write('{0:>10d}{1:>10d}{2:>10d}{3:>10f}\n'.format(time, datas[time]['non'], datas[time]['dropout'], datas[time]['ipi']))
+
 
 # The whole level 3 program generates the IPI
 def level3():
@@ -180,4 +152,3 @@ def level3():
     write_ipi()
 
 level3()
-write_watchTime()
