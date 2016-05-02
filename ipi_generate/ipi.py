@@ -12,7 +12,7 @@ testNum = 300
 divider = '--------------------'
 eventFileName = 'user_events.txt'
 categoryFileName = 'category.txt'
-ipiFileName = 'ipi.txt'
+ipiFileName = 'ipi_kind_3113.txt'
 watchTimeFileName = 'watchTime.txt'
 # Data type
 View = namedtuple('View', ['User', 'Module', 'Duration', 'Start', 'End', 'Clickstream', 'Non_Dropout'])
@@ -98,7 +98,6 @@ def get_weight(clickstream):
 # Compute type of clickstreams' weight
 def get_all_weight():
     print('Computing weight...')
-    avg_weight.clear()
     # Compute all type of clickstreams' weight
     for clickstream in clickstreams.keys():
         weight = get_weight(clickstream)
@@ -108,6 +107,7 @@ def get_all_weight():
 # Compute the average of categories' weight
 def get_avg():
     print('Computing average weight...')
+    avg_weight.clear()
     avg = [0] * len(categories)
     for para in clickstreams.values():
         avg = [a + b for a, b in zip(avg, para[1])]
@@ -122,7 +122,7 @@ def get_all_ipi():
         weight = para[1]
         ipi = 0
         for i in range(len(cateWeight)):
-            ipi += cateWeight[i] * 1 if weight[i] > avg_weight[i] else -1
+            ipi += cateWeight[i] * (1 if weight[i] > avg_weight[i] else -1)
         clickstreams[stream].append(ipi)
 
 
