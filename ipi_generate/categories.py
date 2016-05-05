@@ -10,7 +10,7 @@ import operator
 nSize = 4
 pSize = 100
 divider = '--------------------'
-eventFileName = 'user_events.txt'
+eventFileName = 'user_events_fixed.txt'
 patternFileName = 'pattern.txt'
 categoryFileName = 'category.txt'
 start_from_pattern = True
