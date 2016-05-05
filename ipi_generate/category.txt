@@ -34,8 +34,8 @@ SbSfPaPl
 SbSbSbSf
 SfSbPaPl
 SbSSbSSbSSb
-PlSfSbPa
 PaPlSfSb
+PlSfSbPa
 SSbSSbSSbSb
 PaPlSfPa
 SfPaPlPa
